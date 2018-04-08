@@ -103,8 +103,17 @@ class Crawler:
 
         while True:
             self.driver.get(link)
+            # more images on page
+            self.driver.execute_script("window.scrollTo(0, 900)")
+            self.driver.execute_script("window.scrollTo(0, 900)")
+
             collected_data = self.collect_pictures(self.quality)
-            file.write(collected_data)
+            try:
+                file.write(collected_data)
+            except Exception as e:
+                print(e)
+                self.serialize()
+                break
 
             if len(self.users - self.visited_users) < 100:
                 links = self.collect_comment_pages()

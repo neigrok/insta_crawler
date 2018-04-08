@@ -22,6 +22,11 @@ class FileHandler:
         urllib.request.urlretrieve(link, file)
         self.add_to_index(filename, hashtags)
 
-    def add_to_index(self, filename, hashtags):
-        with open(os.path.join(self.path, 'index.csv'), "a") as f:
-            f.write(filename + ',' + hashtags + '\n')
+    def add_to_index(self, filename, hashtags, attempt=1):
+        if attempt > 5:
+            return
+        try:
+            with open(os.path.join(self.path, 'index.csv'), "a") as f:
+                f.write(filename + ',' + hashtags + '\n')
+        except PermissionError:
+            self.add_to_index(filename, hashtags, attempt=attempt+1)
