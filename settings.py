@@ -11,3 +11,6 @@ START_LINK = 'https://www.instagram.com/explore/tags/russia/'
 
 # save file to stop scrapping and continue later
 SAVE_FILE = os.path.join(PATH, 'dump')
+
+
+SCROLL_PAUSE_TIME = 0.5

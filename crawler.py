@@ -1,13 +1,13 @@
 from settings import *
 
 import re
+import time
 import pickle
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
 from utils import mkdir
 from filehandler import FileHandler
-
 
 class Crawler:
     def __init__(self, path=PATH, img_path=IMG_PATH, driver_path='\\chromedriver.exe', quality='320w'):
@@ -72,11 +72,11 @@ class Crawler:
         return names
 
     def getlink(self):
-        # Get random user from users and create link to his profile
+        # Get random user from users set and create link to his profile
         user = (self.users - self.visited_users).pop()
         self.visited_users.add(user)
         link = 'https://www.instagram.com/' + user
-        return link
+        return link, user
 
     def serialize(self):
         mkdir(SAVE_FILE)
@@ -91,37 +91,63 @@ class Crawler:
         with open(os.path.join(SAVE_FILE, 'visited_users.pickle'), 'rb') as handle:
             self.visited_users = pickle.load(handle)
 
+    def scroll_down(self, times=1):
+        last_height = self.driver.execute_script("return document.body.scrollHeight")
+
+        i = 0
+        while i < times:
+            # Scroll down to bottom
+            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+
+            # Wait to load page
+            time.sleep(SCROLL_PAUSE_TIME)
+
+            # Calculate new scroll height and compare with last scroll height
+            new_height = self.driver.execute_script("return document.body.scrollHeight")
+            if new_height == last_height:
+                break
+            last_height = new_height
+            i += 1
+
+    def scrap_users(self, username):
+        self.users.add(username)
+        self.run()
+
+    def scrap_hashtag(self, hashtag):
+        pass
+
+
     def run(self):
         # all file handling
         file = FileHandler(self.path, self.img_path)
+        user = ''
 
         # entry point set
         if len(self.users) > 0:
-            link = self.getlink()
+            link, user = self.getlink()
         else:
             link = START_LINK
 
         while True:
             self.driver.get(link)
-            # more images on page
-            self.driver.execute_script("window.scrollTo(0, 900)")
-            self.driver.execute_script("window.scrollTo(0, 900)")
+
+            # нужно доскролливать каждого пользователя до конца
+            self.scroll_down(times=20)
 
             collected_data = self.collect_pictures(self.quality)
             try:
-                file.write(collected_data)
+                file.write(collected_data, user=user)
             except Exception as e:
                 print(e)
                 self.serialize()
                 break
 
-            if len(self.users - self.visited_users) < 100:
-                links = self.collect_comment_pages()
-                for link in links:
-                    names = self.extract_names(link)
-                    self.users |= set(names)
+            links = self.collect_comment_pages()
+            for link in links:
+                names = self.extract_names(link)
+                self.users |= set(names)
 
-            link = self.getlink()
+            link, user = self.getlink()
 
     def __del__(self):
         # close chrome
